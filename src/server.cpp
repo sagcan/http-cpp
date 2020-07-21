@@ -1,36 +1,24 @@
 #include <string>
 #include <iostream>
-#include <filesystem>
 
 #include <netinet/in.h>
 #include <sys/epoll.h>
 
-#include <climits>
 #include <cstring>
 #include <unistd.h>
+
+#include "server.h"
 
 constexpr int BACKLOG_SOCKET = 5;
 constexpr int BACKLOG_EPOLL = 10;
 constexpr int BUFFER_SIZE = 2048;
 
-static bool are_valid_args(const int port, const std::string &dir);
 static int server_init(const int port);
 static int server_listen(const int server_fd, const std::string &dir);
 static int server_handle(const int client_fd, const int epoll_fd, const std::string &dir);
 
-int main(int argc, char **argv) {
-    if (argc != 3) {
-        std::cerr << "USAGE: " << argv[0] << " [directory] [port]\n";
-        return EXIT_FAILURE;
-    }
-
-    std::string dir = argv[1];
-    int port = std::stoi(argv[2]);  // TODO: use uint16 instead?
+int http::servert_start(int port, const std::string &dir) {
     int server_fd;
-
-    if (are_valid_args(port, dir) == false) {
-        return EXIT_FAILURE;
-    }
 
     if ((server_fd = server_init(port)) == -1) {
         return EXIT_FAILURE;
@@ -48,19 +36,6 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-static bool are_valid_args(const int port, const std::string &dir) {
-    if (port < 0 || port > USHRT_MAX) { // TODO: check if port == 0 valid
-        std::cerr << "Invalid port value\n";
-        return false;
-    }
-
-    if (std::filesystem::is_directory(std::filesystem::path(dir)) == false) {
-        std::cerr << "Invalid directory\n";
-        return false;
-    }
-
-    return true;
-}
 
 static int server_init(const int port) {
     int server_fd;
