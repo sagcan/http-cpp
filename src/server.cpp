@@ -21,19 +21,15 @@ int http::servert_start(int port, const std::string &dir) {
     int server_fd;
 
     if ((server_fd = server_init(port)) == -1) {
-        return EXIT_FAILURE;
+        return -1;
     }
-
-    std::cout << "Directory: " << dir << std::endl;
-    std::cout << "Port: " << port << std::endl;
-    std::cout << "Server FD: " << server_fd << std::endl;
 
     // start main loop
     if (server_listen(server_fd, dir) == -1) {
-        return EXIT_FAILURE;
+        return -1;
     }
 
-    return EXIT_SUCCESS;
+    return server_fd;
 }
 
 
@@ -88,7 +84,7 @@ static int server_listen(const int server_fd, const std::string &dir) {
     for (;;) {
         if ((nfds = epoll_wait(epoll_fd, events, BACKLOG_EPOLL, -1)) == -1) {
             std::cerr << "epoll_wait: " << std::strerror(errno) << std::endl;
-            exit(EXIT_FAILURE); // TODO: does this close any opened file descriptors automatically?
+            return -1; // TODO: cleanup (open fd's)?
         }
 
         for (int i = 0; i < nfds; ++i) {
