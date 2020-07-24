@@ -8,6 +8,9 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "http_method.h"
+#include "http_request.h"
+#include "http_response.h"
 
 constexpr int BACKLOG_SOCKET = 5;
 constexpr int BACKLOG_EPOLL = 10;
@@ -121,9 +124,20 @@ static int server_handle(const int client_fd, const int epoll_fd, const std::str
         std::cout << "Client lost; fd: " << client_fd << std::endl;
         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
         close(client_fd);
-    } else {
-//        std::string content(buf);
-        std::cout << buf;
+
+        return 0;
+    }
+
+    http::RequestHeader requestHeader;
+    http::ResponseHeader responseHeader;
+
+    requestHeader.deserialize(buf);
+
+    if (requestHeader.get_method() == http::Methods::GET && requestHeader.get_uri() == "index.html") {
+        std::string resp = "<html><head><title>itworks</title></head><body><h1>heya</h1></body></html>";
+        responseHeader.add_status(http::StatusCode::OK);
+        std::string yep = responseHeader.serialize(resp);
+        write(client_fd, yep.c_str(), yep.size());
     }
 
     return 0;

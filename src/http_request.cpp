@@ -1,7 +1,7 @@
 #include <vector>
-#include "http_header.h"
+#include "http_request.h"
 
-std::string http::Header::get_value(const std::string &key) {
+std::string http::RequestHeader::get_value(const std::string &key) {
     auto val = m_misc_headers.find(key);
     if (val == m_misc_headers.end()) {
         return std::string();
@@ -10,11 +10,15 @@ std::string http::Header::get_value(const std::string &key) {
     return val->second;
 }
 
-std::string http::Header::get_uri() {
-    return m_uri;
+std::string http::RequestHeader::get_uri() {
+    if (m_uri == "/") {
+        return "index.html";
+    }
+
+    return m_uri.substr(1, m_uri.length());
 }
 
-http::Methods http::Header::get_method() {
+http::Methods http::RequestHeader::get_method() {
     for (int i = 0; i < HTTP_METHODS.size(); ++i) {
         if (m_method == HTTP_METHODS[i]) {
             return static_cast<http::Methods>(i);
@@ -24,8 +28,7 @@ http::Methods http::Header::get_method() {
     return http::Methods::UNKOWN;
 }
 
-int http::Header::deserialize(const std::string &content) {
-    size_t content_len = content.size();
+int http::RequestHeader::deserialize(const std::string &content) {
     size_t pos_prev = 0;
     size_t pos_curr = 0;
 
