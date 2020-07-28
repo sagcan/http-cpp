@@ -1,98 +1,110 @@
-#include <vector>
-#include "http_request.h"
+#include "../inc/http_request.h"
 
-std::string http::RequestHeader::get_value(const std::string &key) {
-    auto val = m_misc_headers.find(key);
-    if (val == m_misc_headers.end()) {
-        return std::string();
-    }
+http::RequestHeader::RequestHeader()    // TODO: remove definition here; default should be with content file
+        : m_root_file_name("index.html") {};
 
-    return val->second;
+http::RequestHeader::RequestHeader(const std::string &content)
+        : m_root_file_name("index.html") {
+    // TODO: implement constructor with content argument; call deserialize here?
 }
 
-std::string http::RequestHeader::get_uri() {
+http::RequestHeader::RequestHeader(const std::string &content, const std::string &root_file_name)
+        : m_root_file_name(root_file_name) {
+    // TODO: implement constructor with content argument; call deserialize here?
+}
+
+http::constants::Method http::RequestHeader::get_method() const {
+    return m_method;
+}
+
+std::string http::RequestHeader::get_uri() const {
     if (m_uri == "/") {
-        return "index.html";
+        return m_root_file_name;
     }
 
-    return m_uri.substr(1, m_uri.length());
+    return m_uri.substr(1, m_uri.size()); // return URI without leading slash
 }
 
-http::Methods http::RequestHeader::get_method() {
-    for (int i = 0; i < HTTP_METHODS.size(); ++i) {
-        if (m_method == HTTP_METHODS[i]) {
-            return static_cast<http::Methods>(i);
-        }
+std::string http::RequestHeader::get_header(const std::string &key) const {
+    auto res = m_misc_headers.find(key);
+
+    if (res == m_misc_headers.end()) {
+        // TODO: throw exception?
+        return "";
     }
 
-    return http::Methods::UNKOWN;
+    return res->second;
 }
 
 int http::RequestHeader::deserialize(const std::string &content) {
-    size_t pos_prev = 0;
     size_t pos_curr = 0;
+    size_t pos_prev = 0;
 
-    //
-    // REQUEST LINE
-    //
-
-    // method
-    pos_curr = content.find_first_of(' ', pos_curr);
+    // HTTP-Method
+    // 1. advance to first whitespace
+    // 2. extract substring
+    // 3. check if substring is a valid HTTP-Method by finding that element in our std::map
+    pos_curr = content.find_first_of(' ', pos_prev);
     if (pos_curr == std::string::npos) {
         return -1;
     }
 
-    m_method = content.substr(pos_prev, pos_curr - pos_prev);
-    if (get_method() == http::Methods::UNKOWN) {
+    auto res = constants::method_map.find(content.substr(pos_prev, pos_curr - pos_prev));
+    if (res == constants::method_map.end()) {
         return -1;
     }
+    m_method = res->second;
+    pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
 
-    // uri
-    pos_prev = ++pos_curr;
-    pos_curr = content.find_first_of(' ', pos_curr);
+    // URI
+    // 1. advance to first whitespace
+    // 2. extract substring
+    pos_curr = content.find_first_of(' ', pos_prev);
     if (pos_curr == std::string::npos) {
         return -1;
     }
-
     m_uri = content.substr(pos_prev, pos_curr - pos_prev);
+    pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
 
-    // method
-    pos_prev = ++pos_curr;
-    pos_curr = content.find_first_of('\r', pos_curr);
-    if (pos_curr == std::string::npos) {
+    // HTTP Version
+    // 1. advance to CRLF sequence (= "\r\n")
+    // 2. extract substring
+    // 3. check if HTTP version is 1.1
+    pos_curr = content.find_first_of(constants::LINE_ENDING, pos_prev);
+    if (pos_curr == std::string::npos || content.substr(pos_prev, (pos_curr - pos_prev) - 1) == constants::HTTP_VERSION) {
         return -1;
     }
+    pos_prev = ++(++pos_curr);  // advance to next line (currently sitting on CRLF sequence -> '\r\n')
 
-    if (content.substr(pos_prev, pos_curr - pos_prev) != "HTTP/1.1") {
-        // we support only HTTP 1.1 (for now)
-        return -1;
-    }
 
-    //
-    // MISC HEADERS
-    //
+    // Misc Headers
+    // 1. advance to first colon
+    // 2. extract substring (= key)
+    // 3. advance to CRLF sequence
+    // 4. extract substring (= value)
+    // 5. insert key and value into std::map
     std::string key;
     std::string value;
-    while (true) {
-        ++(++pos_curr); // our cursor is currently at a '\r', increasing once get's us to '\n', increasing it again to the next line
-        pos_prev = pos_curr;
-        pos_curr = content.find_first_of(':', pos_curr);
+    for (;;) {
+        // key
+        pos_curr = content.find_first_of(':', pos_prev);
         if (pos_curr == std::string::npos) {
             break;
         }
-
         key = content.substr(pos_prev, pos_curr - pos_prev);
+        pos_prev = ++(++pos_curr); // advance by two characters (currently sitting on a colon followed by whitespace)
 
-        pos_prev = ++(++pos_curr);
-        pos_curr = content.find_first_of('\r', pos_curr);
+        // value
+        pos_curr = content.find_first_of(constants::LINE_ENDING, pos_prev);
         if (pos_curr == std::string::npos) {
             break;
         }
-
         value = content.substr(pos_prev, pos_curr - pos_prev);
-
         m_misc_headers.insert(std::make_pair(key, value));
+        pos_prev = ++(++pos_curr); // advance to next line (currently sitting on CRLF sequence -> '\r\n')
     }
 
     return 0;
 }
+
+

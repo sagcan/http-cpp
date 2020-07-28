@@ -7,10 +7,9 @@
 #include <cstring>
 #include <unistd.h>
 
-#include "server.h"
-#include "http_method.h"
-#include "http_request.h"
-#include "http_response.h"
+#include "../inc/server.h"
+#include "../inc/http_request.h"
+#include "../inc/http_response.h"
 
 constexpr int BACKLOG_SOCKET = 5;
 constexpr int BACKLOG_EPOLL = 10;
@@ -129,15 +128,17 @@ static int server_handle(const int client_fd, const int epoll_fd, const std::str
     }
 
     http::RequestHeader requestHeader;
-    http::ResponseHeader responseHeader;
-
     requestHeader.deserialize(buf);
+    if (requestHeader.get_method() != http::constants::Method::GET) {
+        // we only support GET methods for now, so let's return a 405 error
+        // see https://tools.ietf.org/html/rfc7231#section-6.5.5
 
-    if (requestHeader.get_method() == http::Methods::GET && requestHeader.get_uri() == "index.html") {
-        std::string resp = "<html><head><title>itworks</title></head><body><h1>heya</h1></body></html>";
-        responseHeader.add_status(http::StatusCode::OK);
-        std::string yep = responseHeader.serialize(resp);
-        write(client_fd, yep.c_str(), yep.size());
+        const char *response = "HTTP/1.1 405 Method not Allowed\r\nAllow: GET\r\n\r\n";
+        write(client_fd, response, std::strlen(response));
+    } else {
+        http::ResponseHeader responseHeader(dir);
+        std::string response = responseHeader.serialize(requestHeader);
+        write(client_fd, response.c_str(), response.size());
     }
 
     return 0;
