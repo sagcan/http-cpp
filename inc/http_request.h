@@ -16,9 +16,9 @@ public:
     RequestHeader();
     RequestHeader(const std::string &content);
     RequestHeader(const std::string &content, const std::string &root_file_name);
-    constants::Method get_method() const;
-    std::string get_uri() const;
-    std::string get_header(const std::string &key) const;
+    const constants::Method get_method() const;
+    const std::string &get_uri() const;
+    const std::string &get_header(const std::string &key) const;
     int deserialize(const std::string &content);
 };
 }

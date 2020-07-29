@@ -11,14 +11,14 @@ void http::ResponseHeader::add_header(const std::string &key, const std::string 
     m_misc_headers.insert(std::make_pair(key, value));
 }
 
-std::string http::ResponseHeader::serialize(const RequestHeader &req_header) {
+std::string http::ResponseHeader::serialize(const RequestHeader &req_header) const {
     // 1. open file (return empty string if not works; eventually replace with exception)
     // 2. create response line
     // 3. iterate over headers and add them
     // 4. add content of opened file
     // 5. return file
     std::string response;
-    std::string file_path = std::string(m_dir_path + "/" + req_header.get_uri());    // TODO: check if "/" works
+    std::string file_path = std::string(m_dir_path + "/" + req_header.get_uri());
 
     std::ifstream ifs(file_path);
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));

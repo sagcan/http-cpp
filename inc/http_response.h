@@ -14,7 +14,7 @@ private:
 public:
     ResponseHeader(const std::string &dir_path);
     void add_header(const std::string &key, const std::string &value);
-    std::string serialize(const RequestHeader &req_header);
+    std::string serialize(const RequestHeader &req_header) const;
 };
 }
 

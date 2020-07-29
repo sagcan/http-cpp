@@ -13,24 +13,24 @@ http::RequestHeader::RequestHeader(const std::string &content, const std::string
     // TODO: implement constructor with content argument; call deserialize here?
 }
 
-http::constants::Method http::RequestHeader::get_method() const {
+const http::constants::Method http::RequestHeader::get_method() const {
     return m_method;
 }
 
-std::string http::RequestHeader::get_uri() const {
+const std::string &http::RequestHeader::get_uri() const {
     if (m_uri == "/") {
         return m_root_file_name;
     }
 
-    return m_uri.substr(1, m_uri.size()); // return URI without leading slash
+    return m_uri;
 }
 
-std::string http::RequestHeader::get_header(const std::string &key) const {
+const std::string &http::RequestHeader::get_header(const std::string &key) const {
     auto res = m_misc_headers.find(key);
 
     if (res == m_misc_headers.end()) {
         // TODO: throw exception?
-        return "";
+        return ""; // doesn't work with reference (obviously), so implement exception ASAP (segfault otherwise)
     }
 
     return res->second;
