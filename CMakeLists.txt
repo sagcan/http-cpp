@@ -12,4 +12,4 @@ add_executable(
         src/http_server.cpp inc/http_server.h
         src/exception_socket.cpp inc/exception_socket.h
         src/exception_epoll.cpp inc/exception_epoll.h
-)
+        src/exception_parser.cpp inc/exception_parser.h)

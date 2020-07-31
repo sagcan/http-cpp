@@ -1,8 +1,8 @@
 #include "../inc/http_server.h"
-#include "../inc/exception_socket.h"
 #include "../inc/exception_epoll.h"
 #include "../inc/http_request.h"
 #include "../inc/http_response.h"
+#include "../inc/exception_parser.h"
 
 #include <string>
 #include <iostream>
@@ -16,6 +16,16 @@
 http::Server::Server(int port, const std::string &directory) : m_port(port), m_directory(directory) {
     init_socket();  // init m_server_fd
     init_epoll();   // init m_epoll_fd
+}
+
+http::Server::~Server() {
+    if (m_server_fd != -1) {
+        close(m_server_fd);
+    }
+
+    if (m_epoll_fd != -1) {
+        close(m_epoll_fd);
+    }
 }
 
 void http::Server::init_socket() {
@@ -53,7 +63,7 @@ void http::Server::init_epoll() {
     }
 }
 
-void http::Server::start() {
+void http::Server::start() const {
     struct epoll_event ev;
     struct epoll_event events[m_backlog_epoll];
 
@@ -61,8 +71,7 @@ void http::Server::start() {
     for (;;) {
         if ((nfds = epoll_wait(m_epoll_fd, events, m_backlog_epoll, -1)) == -1) {
             std::cerr << "epoll_wait: " << std::strerror(errno) << std::endl;
-            throw EpollException(std::strerror(errno)); // TODO: data-structure that holds all active fd and cleans them up
-                                                        // on throw
+            throw EpollException(std::strerror(errno)); // TODO: data-structure that holds all active fd and cleans them up on throw (= destructor)
         }
 
         for (int i = 0; i < nfds; ++i) {
@@ -90,7 +99,7 @@ void http::Server::start() {
     }
 }
 
-void http::Server::handle(const int client_fd) {
+void http::Server::handle(const int client_fd) const {
     char buf[m_buffer_size];
     memset(buf, 0, m_buffer_size);    /* clean old values due to re-entering function / stack */
 
@@ -102,17 +111,21 @@ void http::Server::handle(const int client_fd) {
         return;
     }
 
-    http::RequestHeader requestHeader;
-    requestHeader.deserialize(buf);
-    if (requestHeader.get_method() != http::constants::Method::GET) {
-        // we only support GET methods for now, so let's return a 405 error
-        // see https://tools.ietf.org/html/rfc7231#section-6.5.5
+    try {
+        http::RequestHeader requestHeader(buf);
+        if (requestHeader.get_method() != http::constants::Method::GET) {
+            // we only support GET methods for now, so let's return a 405 error
+            // see https://tools.ietf.org/html/rfc7231#section-6.5.5
 
-        const char *response = "HTTP/1.1 405 Method not Allowed\r\nAllow: GET\r\n\r\n";
-        write(client_fd, response, std::strlen(response));
-    } else {
-        http::ResponseHeader responseHeader(m_directory);
-        std::string response = responseHeader.serialize(requestHeader);
-        write(client_fd, response.c_str(), response.size());
+            const char *response = "HTTP/1.1 405 Method not Allowed\r\nAllow: GET\r\n\r\n";
+            write(client_fd, response, std::strlen(response));
+        } else {
+            http::ResponseHeader responseHeader(m_directory);
+            std::string response = responseHeader.serialize(requestHeader);
+            write(client_fd, response.c_str(), response.size());
+        }
+    } catch (HttpParserException &e) {
+        std::cerr << e.what() << std::endl;
     }
 }
+

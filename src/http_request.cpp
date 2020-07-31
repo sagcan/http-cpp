@@ -1,16 +1,14 @@
 #include "../inc/http_request.h"
-
-http::RequestHeader::RequestHeader()    // TODO: remove definition here; default should be with content file
-        : m_root_file_name("index.html") {};
+#include "../inc/exception_parser.h"
 
 http::RequestHeader::RequestHeader(const std::string &content)
         : m_root_file_name("index.html") {
-    // TODO: implement constructor with content argument; call deserialize here?
+    deserialize(content);
 }
 
 http::RequestHeader::RequestHeader(const std::string &content, const std::string &root_file_name)
         : m_root_file_name(root_file_name) {
-    // TODO: implement constructor with content argument; call deserialize here?
+    deserialize(content);
 }
 
 const http::constants::Method http::RequestHeader::get_method() const {
@@ -29,14 +27,13 @@ const std::string &http::RequestHeader::get_header(const std::string &key) const
     auto res = m_misc_headers.find(key);
 
     if (res == m_misc_headers.end()) {
-        // TODO: throw exception?
-        return ""; // doesn't work with reference (obviously), so implement exception ASAP (segfault otherwise)
+        throw std::runtime_error("No value associated with given key");
     }
 
     return res->second;
 }
 
-int http::RequestHeader::deserialize(const std::string &content) {
+void http::RequestHeader::deserialize(const std::string &content) {
     size_t pos_curr = 0;
     size_t pos_prev = 0;
 
@@ -46,12 +43,12 @@ int http::RequestHeader::deserialize(const std::string &content) {
     // 3. check if substring is a valid HTTP-Method by finding that element in our std::map
     pos_curr = content.find_first_of(' ', pos_prev);
     if (pos_curr == std::string::npos) {
-        return -1;
+        throw HttpParserException("No HTTP-Method substring found");
     }
 
     auto res = constants::method_map.find(content.substr(pos_prev, pos_curr - pos_prev));
     if (res == constants::method_map.end()) {
-        return -1;
+        throw HttpParserException("No valid HTTP-Method found");
     }
     m_method = res->second;
     pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
@@ -61,7 +58,7 @@ int http::RequestHeader::deserialize(const std::string &content) {
     // 2. extract substring
     pos_curr = content.find_first_of(' ', pos_prev);
     if (pos_curr == std::string::npos) {
-        return -1;
+        throw HttpParserException("No URI substring found");
     }
     m_uri = content.substr(pos_prev, pos_curr - pos_prev);
     pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
@@ -72,7 +69,7 @@ int http::RequestHeader::deserialize(const std::string &content) {
     // 3. check if HTTP version is 1.1
     pos_curr = content.find_first_of(constants::LINE_ENDING, pos_prev);
     if (pos_curr == std::string::npos || content.substr(pos_prev, (pos_curr - pos_prev) - 1) == constants::HTTP_VERSION) {
-        return -1;
+        throw HttpParserException("No valid HTTP-Version substring found");
     }
     pos_prev = ++(++pos_curr);  // advance to next line (currently sitting on CRLF sequence -> '\r\n')
 
@@ -100,11 +97,10 @@ int http::RequestHeader::deserialize(const std::string &content) {
             break;
         }
         value = content.substr(pos_prev, pos_curr - pos_prev);
-        m_misc_headers.insert(std::make_pair(key, value));
         pos_prev = ++(++pos_curr); // advance to next line (currently sitting on CRLF sequence -> '\r\n')
-    }
 
-    return 0;
+        m_misc_headers.insert(std::make_pair(key, value));
+    }
 }
 
 

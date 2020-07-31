@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "../inc/http_server.h"
+#include "../inc/exception_epoll.h"
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -24,9 +25,14 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-
-    http::Server server(port, dir);
-    server.start();
+    try {
+        http::Server server(port, dir);
+        server.start();
+    } catch (SocketException &e) {
+        std::cerr << e.what() << std::endl;
+    } catch (EpollException &e) {
+        std::cerr << e.what() << std::endl;
+    }
 
 //    std::string req_chrome = "GET / HTTP/1.1\r\n"
 //                             "Host: localhost:8080\r\n"
