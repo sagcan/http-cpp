@@ -3,7 +3,7 @@
 #include <climits>
 #include <filesystem>
 
-#include "../inc/server.h"
+#include "../inc/http_server.h"
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -25,7 +25,8 @@ int main(int argc, char **argv) {
     }
 
 
-    http::servert_start(port, dir);
+    http::Server server(port, dir);
+    server.start();
 
 //    std::string req_chrome = "GET / HTTP/1.1\r\n"
 //                             "Host: localhost:8080\r\n"
