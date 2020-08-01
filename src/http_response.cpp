@@ -1,16 +1,30 @@
 #include <fstream>
 #include <filesystem>
 #include "../inc/http_response.h"
-#include "../inc/http_request.h"
-#include "../inc/http_constants.h"
 
 http::ResponseHeader::ResponseHeader(const std::string &dir_path)
         : m_dir_path(dir_path) {}
-
+/**
+ * Add miscellaneous header into the member map
+ *
+ * @param key The header key (i.e. Content-Type)
+ * @param value The header value (i.e. text/html; charset=UTF-8)
+ */
 void http::ResponseHeader::add_header(const std::string &key, const std::string &value) {
     m_misc_headers.insert(std::make_pair(key, value));
 }
 
+/**
+ * Serialize a response out of member variables like so:
+ * 1. Serialize the Status-Line (HTTP-Version Status-Code Reason-Phrase)
+ * 2. Serialize the Headers (i.e. Content-Type: text/html; charset=UTF-8) by iterating over all available ones inside
+ * the map (m_misc_headers)
+ * 3. Append file-content (if needed) onto serialized message
+ * 4. Return String
+ *
+ * @param req_header Headers of the initial request
+ * @return a serialized HTTP response
+ */
 std::string http::ResponseHeader::serialize(const RequestHeader &req_header) const {
     // 1. open file (return empty string if not works; eventually replace with exception)
     // 2. create response line
@@ -35,7 +49,7 @@ std::string http::ResponseHeader::serialize(const RequestHeader &req_header) con
         response.append(constants::LINE_ENDING);
 
         // headers
-        if (m_misc_headers.empty() == false) {
+        if (!m_misc_headers.empty()) {
             for (auto const &[key, val] : m_misc_headers) {
                 response.append(key);
                 response.append(": ");
@@ -44,12 +58,13 @@ std::string http::ResponseHeader::serialize(const RequestHeader &req_header) con
             }
         }
 
+        // content
         response.append("Content-Length: ");
         response.append(std::to_string(content.size()));
         response.append(constants::LINE_ENDING);    // two CRLF sequences needed to indicate start of content
         response.append(constants::LINE_ENDING);
         response.append(content);
-    } else if (std::filesystem::exists(file_path) == false) {
+    } else if (!std::filesystem::exists(file_path)) {
         // 404 error
         response.append(constants::HTTP_VERSION);
         response.append(" 404 Not Found");
@@ -60,6 +75,7 @@ std::string http::ResponseHeader::serialize(const RequestHeader &req_header) con
         response.append(constants::LINE_ENDING);
         response.append(constants::NOT_FOUND_ERROR_MESSAGE);
     } else {
+        // 500 error
         response.append(constants::HTTP_VERSION);
         response.append(" 500 Internal Server Error");
         response.append(constants::LINE_ENDING);

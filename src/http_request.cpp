@@ -1,4 +1,3 @@
-#include <spdlog/spdlog.h>
 #include "../inc/http_request.h"
 #include "../inc/exception_parser.h"
 
@@ -24,6 +23,12 @@ const std::string &http::RequestHeader::get_uri() const {
     return m_uri;
 }
 
+/**
+ * Return a key-value header pair
+ *
+ * @param key The header key (i.e. Content-Type, Host, Connection, etc...)
+ * @return The value of the key-value pair (i.e. text/html, localhost:8080, keep-alive, etc...)
+ */
 const std::string &http::RequestHeader::get_header(const std::string &key) const {
     auto res = m_misc_headers.find(key);
 
@@ -34,6 +39,27 @@ const std::string &http::RequestHeader::get_header(const std::string &key) const
     return res->second;
 }
 
+/**
+ * Deserialize a HTTP request and initialize the member variables like so:
+ * 1. Extract Request-Line (HTTP-Method, Request-URI, HTTP-Version)
+ * 2. Extract Misc-Headers (i.e. User-Agent, Host, Accept, etc...)
+ *
+ * Extracting data works by advancing to specific tokens. For 1) we
+ * 1.1 Save our current location, advance to the first whitespace occurrence and extract that substring (= HTTP-Method)
+ * 1.2 Save our current location, advance to the first whitespace occurrence and extract that substring (= Request-URI)
+ * 1.3 Save our current location, advance to the first CRLF occurrence and extract that substring (= HTTP-Version)
+ *
+ * For 2) we
+ * 2.0 Enter a loop
+ * 2.1 Save our current location, advance to the first colon occurrence and extract that substring (= header-key)
+ * 2.2 Save our current location, advance to the first CRLF occurrence and extract that substring (= header-value)
+ * 2.3 Repeat steps 2.1 and 2.2 until no colon or CRLF sequence can be found (and/or our position is bigger than the
+ * size of the content)
+ *
+ * See chapter 5 and 6 of (RFC 2616)[https://tools.ietf.org/html/rfc2616]
+ *
+ * @param content The raw HTTP request
+ */
 void http::RequestHeader::deserialize(const std::string &content) {
     size_t pos_curr = 0;
     size_t pos_prev = 0;

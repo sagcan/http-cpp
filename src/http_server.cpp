@@ -5,7 +5,6 @@
 #include "../inc/exception_parser.h"
 
 #include <string>
-#include <iostream>
 
 #include <netinet/in.h>
 #include <sys/epoll.h>
@@ -15,8 +14,9 @@
 #include <spdlog/spdlog.h>
 
 http::Server::Server(int port, const std::string &directory) : m_port(port), m_directory(directory) {
-    init_socket();  // init m_server_fd
-    init_epoll();   // init m_epoll_fd
+    // m_server_fd and m_epoll_fd will be initialized inside init_socket() and init_epoll() respectively
+    init_socket();
+    init_epoll();
 }
 
 http::Server::~Server() {
@@ -30,6 +30,9 @@ http::Server::~Server() {
     }
 }
 
+/**
+ * Create a socket, retrieve it's file descriptor and finally initialize the member variable m_server_fd.
+ */
 void http::Server::init_socket() {
     struct sockaddr_in addr;
 
@@ -53,6 +56,9 @@ void http::Server::init_socket() {
     }
 }
 
+/**
+ * Create an epoll instance, retrieve it's file descriptor and finally initialize the member variable m_epoll_fd.
+ */
 void http::Server::init_epoll() {
     struct epoll_event ev;
     struct epoll_event events[m_backlog_epoll];
@@ -70,6 +76,10 @@ void http::Server::init_epoll() {
     }
 }
 
+/**
+ * Start the server main loop and serve request upon epoll events. The main loop itself is "sleeping" until an epoll
+ * event happens, so no busy waiting whatsover.
+ */
 void http::Server::start() const {
     spdlog::info("Main loop started");
 
@@ -85,7 +95,7 @@ void http::Server::start() const {
 
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd == m_server_fd) {
-                /* server: accept new connections and add them to the epoll interest list */
+                // server event => accept new connection and add it to the epoll interest list
                 int client_fd;
                 if ((client_fd = accept4(m_server_fd, nullptr, nullptr, SOCK_NONBLOCK)) == -1) {
                     spdlog::warn("accept4: {}", strerror(errno));
@@ -101,18 +111,25 @@ void http::Server::start() const {
 
                 spdlog::debug("New connection with file descriptor {}", client_fd); // TODO: more client info
             } else {
-                /* client: handle request and remove from epoll interest list if the connection is lost */
+                // client event => handle request and remove file descriptor from epoll interest list if need be
                 handle(events[i].data.fd);
             }
         }
     }
 }
 
+/**
+ * Retrieve a HTTP request / message from a client, then parse and create a response accordingly.
+ * Also close the connection to the client and remove it from the epoll interest list if need be.
+ *
+ * @param client_fd the file descriptor of the to be served client
+ */
 void http::Server::handle(const int client_fd) const {
     char buf[m_buffer_size];
     memset(buf, 0, m_buffer_size);    /* clean old values due to re-entering function / stack */
 
     if (read(client_fd, buf, m_buffer_size) == 0) {
+        // EOF => close connection
         spdlog::debug("Lost connection with file descriptor {}", client_fd); // TODO: more client info
         epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
         close(client_fd);
@@ -121,6 +138,7 @@ void http::Server::handle(const int client_fd) const {
     }
 
     try {
+        // parse request and create response
         http::RequestHeader requestHeader(buf);
         if (requestHeader.get_method() != http::constants::Method::GET) {
             // we only support GET methods for now, so let's return a 405 error
@@ -135,7 +153,7 @@ void http::Server::handle(const int client_fd) const {
         }
     } catch (HttpParserException &e) {
         // the RequestHeader class doesn't have any "serious" exception so we just use the messages just for debug
-        // purposes inside the catch-block
+        // purposes inside the catch-block; exception can only occur if the request format itself isn't valid
         spdlog::debug("HttpParserException: {}", e.what());
     }
 }

@@ -1,4 +1,3 @@
-#include <map>
 #include <iostream>
 #include <climits>
 #include <filesystem>
@@ -31,7 +30,6 @@ int main(int argc, char **argv) {
 #ifdef HTTP_CPP_DEBUG
     spdlog::set_level(spdlog::level::debug);
 #endif
-
 
     try {
         http::Server server(port, dir);
