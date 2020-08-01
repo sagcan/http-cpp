@@ -13,3 +13,6 @@ add_executable(
         src/exception_socket.cpp inc/exception_socket.h
         src/exception_epoll.cpp inc/exception_epoll.h
         src/exception_parser.cpp inc/exception_parser.h)
+
+add_subdirectory(external/spdlog)
+target_link_libraries(http_cpp PRIVATE spdlog::spdlog)

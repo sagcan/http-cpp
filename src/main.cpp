@@ -2,9 +2,12 @@
 #include <iostream>
 #include <climits>
 #include <filesystem>
+#include <spdlog/spdlog.h>
 
 #include "../inc/http_server.h"
 #include "../inc/exception_epoll.h"
+
+#define HTTP_CPP_DEBUG
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -20,10 +23,15 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (std::filesystem::is_directory(std::filesystem::path(dir)) == false) {
+    if (!std::filesystem::is_directory(std::filesystem::path(dir))) {
         std::cerr << "Invalid directory\n";
         return EXIT_FAILURE;
     }
+
+#ifdef HTTP_CPP_DEBUG
+    spdlog::set_level(spdlog::level::debug);
+#endif
+
 
     try {
         http::Server server(port, dir);

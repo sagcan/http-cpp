@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include "../inc/http_request.h"
 #include "../inc/exception_parser.h"
 

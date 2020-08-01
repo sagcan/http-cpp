@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <unistd.h>
+#include <spdlog/spdlog.h>
 
 http::Server::Server(int port, const std::string &directory) : m_port(port), m_directory(directory) {
     init_socket();  // init m_server_fd
@@ -19,6 +20,7 @@ http::Server::Server(int port, const std::string &directory) : m_port(port), m_d
 }
 
 http::Server::~Server() {
+    spdlog::debug("Executing destructor...");
     if (m_server_fd != -1) {
         close(m_server_fd);
     }
@@ -33,6 +35,7 @@ void http::Server::init_socket() {
 
     /* we apply the SOCK_NONBLOCK flag here, because (e)poll-ing wouldn't be possible otherwise */
     if ((m_server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1) {
+        spdlog::error("socket: {}", std::strerror(errno));
         throw SocketException(std::strerror(errno));
     }
 
@@ -40,10 +43,12 @@ void http::Server::init_socket() {
     addr.sin_port = htons(m_port);      /* don't forget the htons(), kids */
     addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(m_server_fd, (struct sockaddr *) &addr, sizeof(struct sockaddr)) == -1) {
+        spdlog::error("bind: {}", std::strerror(errno));
         throw SocketException(std::strerror(errno));
     }
 
     if (listen(m_server_fd, m_backlog_socket) == -1) {
+        spdlog::error("listen: {}", std::strerror(errno));
         throw SocketException(std::strerror(errno));
     }
 }
@@ -53,24 +58,28 @@ void http::Server::init_epoll() {
     struct epoll_event events[m_backlog_epoll];
 
     if ((m_epoll_fd = epoll_create1(0)) == -1) {
+        spdlog::error("epoll_create1: {}", std::strerror(errno));
         throw EpollException(std::strerror(errno));
     }
 
     ev.events = EPOLLIN;
     ev.data.fd = m_server_fd;
     if (epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, m_server_fd, &ev) == -1) {
+        spdlog::error("epoll_ctl: {}", std::strerror(errno));
         throw EpollException(std::strerror(errno));
     }
 }
 
 void http::Server::start() const {
+    spdlog::info("Main loop started");
+
     struct epoll_event ev;
     struct epoll_event events[m_backlog_epoll];
 
     int nfds;
     for (;;) {
         if ((nfds = epoll_wait(m_epoll_fd, events, m_backlog_epoll, -1)) == -1) {
-            std::cerr << "epoll_wait: " << std::strerror(errno) << std::endl;
+            spdlog::error("epoll_wait: {}", strerror(errno));
             throw EpollException(std::strerror(errno)); // TODO: data-structure that holds all active fd and cleans them up on throw (= destructor)
         }
 
@@ -79,18 +88,18 @@ void http::Server::start() const {
                 /* server: accept new connections and add them to the epoll interest list */
                 int client_fd;
                 if ((client_fd = accept4(m_server_fd, nullptr, nullptr, SOCK_NONBLOCK)) == -1) {
-                    std::cerr << "accept4: " << std::strerror(errno) << std::endl;
+                    spdlog::warn("accept4: {}", strerror(errno));
                     continue;
                 }
 
                 ev.events = EPOLLIN;
                 ev.data.fd = client_fd;
                 if (epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, client_fd, &ev) == -1) {
-                    std::cerr << "epoll_ctl (EPOLL_CTL_ADD): " << std::strerror(errno) << std::endl;
+                    spdlog::warn("epoll_ctl (EPOLL_CTL_ADD): {}", strerror(errno));
                     continue;
                 }
 
-                std::cout << "new connection: " << client_fd << std::endl;
+                spdlog::debug("New connection with file descriptor {}", client_fd); // TODO: more client info
             } else {
                 /* client: handle request and remove from epoll interest list if the connection is lost */
                 handle(events[i].data.fd);
@@ -104,7 +113,7 @@ void http::Server::handle(const int client_fd) const {
     memset(buf, 0, m_buffer_size);    /* clean old values due to re-entering function / stack */
 
     if (read(client_fd, buf, m_buffer_size) == 0) {
-        std::cout << "Client lost; fd: " << client_fd << std::endl;
+        spdlog::debug("Lost connection with file descriptor {}", client_fd); // TODO: more client info
         epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
         close(client_fd);
 
@@ -125,7 +134,9 @@ void http::Server::handle(const int client_fd) const {
             write(client_fd, response.c_str(), response.size());
         }
     } catch (HttpParserException &e) {
-        std::cerr << e.what() << std::endl;
+        // the RequestHeader class doesn't have any "serious" exception so we just use the messages just for debug
+        // purposes inside the catch-block
+        spdlog::debug("HttpParserException: {}", e.what());
     }
 }
 
