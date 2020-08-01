@@ -1,1 +1,15 @@
-# Work in progress
+# http-cpp
+http-cpp is a minimal HTTP server and request / response parser currently supporting `GET` methods only.
+It's purpose - for me personally - was simply to better understand the Linux epoll API while also starting to develop in
+C++
+
+## Building
+As with any CMake project create a `build/` directory, execute `cmake ..` inside it followed by `make -j`:
+```Bash
+mkdir build; cd build
+cmake ..
+make -j
+``` 
+
+## Demo
+**TODO**
