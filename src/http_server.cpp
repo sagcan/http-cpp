@@ -12,15 +12,24 @@
 #include <cstring>
 #include <unistd.h>
 #include <spdlog/spdlog.h>
+#include <signal.h>
+#include <arpa/inet.h>
 
 http::Server::Server(int port, const std::string &directory) : m_port(port), m_directory(directory) {
     // m_server_fd and m_epoll_fd will be initialized inside init_socket() and init_epoll() respectively
     init_socket();
     init_epoll();
+
+    signal(SIGINT, signal_handler);
 }
 
 http::Server::~Server() {
-    spdlog::debug("Executing destructor...");
+    spdlog::info("Cleaning up...");
+
+    for (auto &kv : m_map_fd_ipaddr) {
+        close(kv.first);
+    }
+
     if (m_server_fd != -1) {
         close(m_server_fd);
     }
@@ -35,10 +44,17 @@ http::Server::~Server() {
  */
 void http::Server::init_socket() {
     struct sockaddr_in addr;
+    int reuse = 1;
 
-    /* we apply the SOCK_NONBLOCK flag here, because (e)poll-ing wouldn't be possible otherwise */
+    // we apply the SOCK_NONBLOCK flag here, because (e)poll-ing wouldn't be possible otherwise
     if ((m_server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1) {
         spdlog::error("socket: {}", std::strerror(errno));
+        throw SocketException(std::strerror(errno));
+    }
+
+    // see https://web.archive.org/web/20200121054056/https://hea-www.harvard.edu/~fine/Tech/addrinuse.html
+    if (setsockopt(m_server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1) {
+        spdlog::error("setsockopt: {}", std::strerror(errno));
         throw SocketException(std::strerror(errno));
     }
 
@@ -78,26 +94,36 @@ void http::Server::init_epoll() {
 
 /**
  * Start the server main loop and serve request upon epoll events. The main loop itself is "sleeping" until an epoll
- * event happens, so no busy waiting whatsover.
+ * event happens, so no busy waiting whatsoever.
  */
-void http::Server::start() const {
+void http::Server::start() {
     spdlog::info("Main loop started");
+    spdlog::info("Press Ctrl+C to safely exit http-cpp");
 
     struct epoll_event ev;
     struct epoll_event events[m_backlog_epoll];
 
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
     int nfds;
     for (;;) {
         if ((nfds = epoll_wait(m_epoll_fd, events, m_backlog_epoll, -1)) == -1) {
-            spdlog::error("epoll_wait: {}", strerror(errno));
-            throw EpollException(std::strerror(errno)); // TODO: data-structure that holds all active fd and cleans them up on throw (= destructor)
+            if (errno == EINTR) {
+                // epoll_wait has been interrupted by signal (presumably SIGINT)
+                spdlog::info("Exiting main-loop...", strerror(errno));
+                break;
+            } else {
+                spdlog::error("epoll_wait: {}", strerror(errno));
+                throw EpollException(std::strerror(errno));
+            }
         }
 
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd == m_server_fd) {
                 // server event => accept new connection and add it to the epoll interest list
                 int client_fd;
-                if ((client_fd = accept4(m_server_fd, nullptr, nullptr, SOCK_NONBLOCK)) == -1) {
+                if ((client_fd = accept4(m_server_fd, (struct sockaddr *) &client_addr, &client_addr_len, SOCK_NONBLOCK)) == -1) {
                     spdlog::warn("accept4: {}", strerror(errno));
                     continue;
                 }
@@ -109,7 +135,9 @@ void http::Server::start() const {
                     continue;
                 }
 
-                spdlog::debug("New connection with file descriptor {}", client_fd); // TODO: more client info
+                // add fd and the associated IP address into map for a) the cleanup routine and b) for logging purposes
+                m_map_fd_ipaddr.insert(std::make_pair(client_fd, std::string(inet_ntoa(client_addr.sin_addr))));
+                spdlog::debug("Connection to {} established (fd = {})", inet_ntoa(client_addr.sin_addr), client_fd);
             } else {
                 // client event => handle request and remove file descriptor from epoll interest list if need be
                 handle(events[i].data.fd);
@@ -124,16 +152,17 @@ void http::Server::start() const {
  *
  * @param client_fd the file descriptor of the to be served client
  */
-void http::Server::handle(const int client_fd) const {
+void http::Server::handle(const int client_fd) {
     char buf[m_buffer_size];
     memset(buf, 0, m_buffer_size);    /* clean old values due to re-entering function / stack */
 
     if (read(client_fd, buf, m_buffer_size) == 0) {
-        // EOF => close connection
-        spdlog::debug("Lost connection with file descriptor {}", client_fd); // TODO: more client info
+        // EOF => close connection; we can assume the file descriptor exists in map, so no error checking
+        spdlog::debug("Connection to {} lost (fd = {})", m_map_fd_ipaddr.find(client_fd)->second, client_fd);
         epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
         close(client_fd);
 
+        m_map_fd_ipaddr.erase(client_fd);
         return;
     }
 
@@ -158,3 +187,8 @@ void http::Server::handle(const int client_fd) const {
     }
 }
 
+void http::Server::signal_handler(int signum) {
+    // we can leave the signal handler empty, as epoll_wait() inside the infinite loop will automatically
+    // fail and set EINTR which enables us to do some cleanup as the destructor will be called
+    // hence this method doesn't really do anything :]
+}

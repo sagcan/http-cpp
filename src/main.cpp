@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
 #ifdef HTTP_CPP_DEBUG
     spdlog::set_level(spdlog::level::debug);
 #endif
+    spdlog::set_pattern("[%d.%m.%Y %H:%M:%S] [%^%l%$] %v");
 
     try {
         http::Server server(port, dir);
