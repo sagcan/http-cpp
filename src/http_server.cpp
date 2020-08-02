@@ -158,8 +158,7 @@ void http::Server::start() {
  * @param client_fd the file descriptor of the to be served client
  */
 void http::Server::handle(const int client_fd) {
-    char buf[BUFFER_SIZE];
-    memset(buf, 0, BUFFER_SIZE);    /* clean old values due to re-entering function / stack */
+    char buf[BUFFER_SIZE] = {0};
 
     if (read(client_fd, buf, BUFFER_SIZE) == 0) {
         // EOF => close connection; we can assume the file descriptor exists in map, so no error checking
