@@ -1,9 +1,7 @@
 #include "../inc/http_server.h"
-#include "../inc/exception_epoll.h"
 #include "../inc/http_request.h"
 #include "../inc/http_response.h"
-#include "../inc/exception_parser.h"
-#include "../inc/exception_socket.h"
+#include "../inc/exceptions.h"
 
 #include <string>
 

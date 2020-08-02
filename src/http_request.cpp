@@ -1,5 +1,5 @@
 #include "../inc/http_request.h"
-#include "../inc/exception_parser.h"
+#include "../inc/exceptions.h"
 
 http::RequestHeader::RequestHeader(const std::string &content)
         : m_root_file_name("index.html") {

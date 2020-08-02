@@ -4,9 +4,7 @@ add_executable(
         http_request.cpp
         http_response.cpp
         http_server.cpp
-        exception_socket.cpp
-        exception_epoll.cpp
-        exception_parser.cpp
+        exceptions.cpp
 )
 
 target_include_directories(http_cpp PRIVATE ../inc)

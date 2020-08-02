@@ -4,8 +4,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../inc/http_server.h"
-#include "../inc/exception_epoll.h"
-#include "../inc/exception_socket.h"
+#include "../inc/exceptions.h"
 
 #define HTTP_CPP_DEBUG
 
