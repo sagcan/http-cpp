@@ -8,10 +8,10 @@ namespace http {
 namespace constants {
 
 
-static const inline std::string_view LINE_ENDING = "\r\n";
-static const inline std::string_view HTTP_VERSION = "HTTP/1.1";
-static const inline std::string_view NOT_FOUND_ERROR_MESSAGE = "<html><head><title>Not Found :(</title></head><body>The given document couldn't be found</body></html>";
-static const inline std::string_view INTERNAL_SERVER_ERROR_MESSAGE = "<html><head><title>Internal Server Error :(</title></head><body>Send help</body></html>";
+const inline std::string_view LINE_ENDING = "\r\n";
+const inline std::string_view HTTP_VERSION = "HTTP/1.1";
+const inline std::string_view NOT_FOUND_ERROR_MESSAGE = "<html><head><title>Not Found :(</title></head><body>The given document couldn't be found</body></html>";
+const inline std::string_view INTERNAL_SERVER_ERROR_MESSAGE = "<html><head><title>Internal Server Error :(</title></head><body>Send help</body></html>";
 
 enum class Method {
     OPTIONS,
@@ -24,7 +24,7 @@ enum class Method {
     CONNECT
 };
 
-static const inline std::map<std::string, Method> method_map = {
+const inline std::map<std::string, Method> method_map = {
         {"OPTIONS", Method::OPTIONS },
         {"GET",     Method::GET     },
         {"HEAD",    Method::HEAD    },
@@ -79,7 +79,7 @@ enum StatusCode {
     HTTP_VERSION_NOT_SUPPORTED        = 505
 };
 
-static const inline std::map<int, std::string> statuscode_map = {
+const inline std::map<int, std::string> statuscode_map = {
         {CONTINUE,                          "Continue"},
         {SWITCHING_PROTOCOLS,               "Switching Protocols"},
         {OK,                                "OK"},
