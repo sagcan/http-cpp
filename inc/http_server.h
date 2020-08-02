@@ -2,22 +2,17 @@
 #define HTTP_CPP_HTTP_SERVER_H
 
 #include <string>
-#include <map>
-#include "exception_socket.h"
+#include <unordered_map>
 
 namespace http {
 class Server {
 private:
-    static constexpr int m_backlog_socket = 5;
-    static constexpr int m_backlog_epoll = 10;
-    static constexpr int m_buffer_size = 2048;
-
     int m_server_fd = -1;
     int m_epoll_fd = -1;
 
     int m_port;
     std::string m_directory;
-    std::map<int, std::string> m_map_fd_ipaddr;
+    std::unordered_map<int, std::string> m_map_fd_ipaddr;
 
     void init_socket();
     void init_epoll();

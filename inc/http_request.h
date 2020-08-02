@@ -6,7 +6,7 @@
 namespace http {
 class RequestHeader {
 private:
-    std::map<std::string, std::string> m_misc_headers;
+    std::unordered_map<std::string, std::string> m_misc_headers;
     std::string m_uri;
     constants::Method m_method;
 

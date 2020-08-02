@@ -1,8 +1,8 @@
 #ifndef HTTP_CPP_HTTP_CONSTANTS_H
 #define HTTP_CPP_HTTP_CONSTANTS_H
 
-#include <map>
 #include <string>
+#include <unordered_map>
 
 namespace http {
 namespace constants {
@@ -24,7 +24,7 @@ enum class Method {
     CONNECT
 };
 
-const inline std::map<std::string, Method> method_map = {
+const inline std::unordered_map<std::string, Method> method_map = {
         {"OPTIONS", Method::OPTIONS },
         {"GET",     Method::GET     },
         {"HEAD",    Method::HEAD    },
@@ -79,7 +79,7 @@ enum StatusCode {
     HTTP_VERSION_NOT_SUPPORTED        = 505
 };
 
-const inline std::map<int, std::string> statuscode_map = {
+const inline std::unordered_map<int, std::string> statuscode_map = {
         {CONTINUE,                          "Continue"},
         {SWITCHING_PROTOCOLS,               "Switching Protocols"},
         {OK,                                "OK"},

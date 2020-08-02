@@ -9,7 +9,7 @@ namespace http {
 class ResponseHeader {
 private:
     std::string m_dir_path;
-    std::map<std::string, std::string> m_misc_headers;
+    std::unordered_map<std::string, std::string> m_misc_headers;
 
 public:
     ResponseHeader(const std::string &dir_path);

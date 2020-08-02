@@ -3,6 +3,7 @@
 #include "../inc/http_request.h"
 #include "../inc/http_response.h"
 #include "../inc/exception_parser.h"
+#include "../inc/exception_socket.h"
 
 #include <string>
 
@@ -14,6 +15,10 @@
 #include <spdlog/spdlog.h>
 #include <signal.h>
 #include <arpa/inet.h>
+
+constexpr int BACKLOG_SOCKET = 5;
+constexpr int BACKLOG_EPOLL = 10;
+constexpr int BUFFER_SIZE = 2048;
 
 http::Server::Server(int port, const std::string &directory) : m_port(port), m_directory(directory) {
     // m_server_fd and m_epoll_fd will be initialized inside init_socket() and init_epoll() respectively
@@ -66,7 +71,7 @@ void http::Server::init_socket() {
         throw SocketException(std::strerror(errno));
     }
 
-    if (listen(m_server_fd, m_backlog_socket) == -1) {
+    if (listen(m_server_fd, BACKLOG_SOCKET) == -1) {
         spdlog::error("listen: {}", std::strerror(errno));
         throw SocketException(std::strerror(errno));
     }
@@ -77,7 +82,7 @@ void http::Server::init_socket() {
  */
 void http::Server::init_epoll() {
     struct epoll_event ev;
-    struct epoll_event events[m_backlog_epoll];
+    struct epoll_event events[BACKLOG_EPOLL];
 
     if ((m_epoll_fd = epoll_create1(0)) == -1) {
         spdlog::error("epoll_create1: {}", std::strerror(errno));
@@ -101,14 +106,14 @@ void http::Server::start() {
     spdlog::info("Press Ctrl+C to safely exit http-cpp");
 
     struct epoll_event ev;
-    struct epoll_event events[m_backlog_epoll];
+    struct epoll_event events[BACKLOG_EPOLL];
 
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
 
     int nfds;
     for (;;) {
-        if ((nfds = epoll_wait(m_epoll_fd, events, m_backlog_epoll, -1)) == -1) {
+        if ((nfds = epoll_wait(m_epoll_fd, events, BACKLOG_EPOLL, -1)) == -1) {
             if (errno == EINTR) {
                 // epoll_wait has been interrupted by signal (presumably SIGINT)
                 spdlog::info("Exiting main-loop...", strerror(errno));
@@ -153,10 +158,10 @@ void http::Server::start() {
  * @param client_fd the file descriptor of the to be served client
  */
 void http::Server::handle(const int client_fd) {
-    char buf[m_buffer_size];
-    memset(buf, 0, m_buffer_size);    /* clean old values due to re-entering function / stack */
+    char buf[BUFFER_SIZE];
+    memset(buf, 0, BUFFER_SIZE);    /* clean old values due to re-entering function / stack */
 
-    if (read(client_fd, buf, m_buffer_size) == 0) {
+    if (read(client_fd, buf, BUFFER_SIZE) == 0) {
         // EOF => close connection; we can assume the file descriptor exists in map, so no error checking
         spdlog::debug("Connection to {} lost (fd = {})", m_map_fd_ipaddr.find(client_fd)->second, client_fd);
         epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);

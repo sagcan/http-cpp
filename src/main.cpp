@@ -5,6 +5,7 @@
 
 #include "../inc/http_server.h"
 #include "../inc/exception_epoll.h"
+#include "../inc/exception_socket.h"
 
 #define HTTP_CPP_DEBUG
 
