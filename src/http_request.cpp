@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "../inc/http_request.h"
 #include "../inc/exceptions.h"
 

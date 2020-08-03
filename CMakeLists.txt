@@ -3,5 +3,5 @@ project(http_cpp)
 
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(spdlog REQUIRED)
 add_subdirectory(src)
-add_subdirectory(external/spdlog)
