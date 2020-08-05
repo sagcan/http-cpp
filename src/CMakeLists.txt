@@ -4,7 +4,6 @@ add_executable(
         http_request.cpp
         http_response.cpp
         http_server.cpp
-        exceptions.cpp
 )
 
 target_include_directories(http_cpp PRIVATE ../inc)

@@ -1,40 +1,22 @@
 #ifndef HTTP_CPP_EXCEPTIONS_H
 #define HTTP_CPP_EXCEPTIONS_H
 
-
 #include <string>
+#include <stdexcept>
 
-class SocketException : public std::exception {
-private:
-    std::string m_error;
-
+class SocketException : public std::runtime_error {
 public:
-    SocketException(const std::string &error);
-    const char *what() const noexcept;
+    using std::runtime_error::runtime_error;
 };
 
-
-
-class EpollException : public std::exception {
-private:
-    std::string m_error;
-
+class EpollException : public std::runtime_error {
 public:
-    EpollException(const std::string &error);
-    const char *what() const noexcept;
+    using std::runtime_error::runtime_error;
 };
 
-
-
-class HttpParserException : public std::exception {
-private:
-    std::string m_error;
-
+class HttpParserException : public std::runtime_error {
 public:
-    HttpParserException(const std::string &error);
-    const char *what() const noexcept;
+    using std::runtime_error::runtime_error;
 };
-
-
 
 #endif //HTTP_CPP_EXCEPTIONS_H
