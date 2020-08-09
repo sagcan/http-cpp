@@ -79,7 +79,8 @@ void http::RequestHeader::deserialize(const std::string &content) {
         throw HttpParserException("No valid HTTP-Method found");
     }
     m_method = res->second;
-    pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
+    pos_curr += 1; // advance by one character (currently sitting on whitespace)
+    pos_prev = pos_curr;
 
     // URI
     // 1. advance to first whitespace
@@ -89,7 +90,8 @@ void http::RequestHeader::deserialize(const std::string &content) {
         throw HttpParserException("No URI substring found");
     }
     m_uri = content.substr(pos_prev, pos_curr - pos_prev);
-    pos_prev = ++pos_curr;  // advance by one character (currently sitting on whitespace)
+    pos_curr += 1; // advance by one character (currently sitting on whitespace)
+    pos_prev = pos_curr;
 
     // HTTP Version
     // 1. advance to CRLF sequence (= "\r\n")
@@ -99,7 +101,8 @@ void http::RequestHeader::deserialize(const std::string &content) {
     if (pos_curr == std::string::npos || content.substr(pos_prev, (pos_curr - pos_prev) - 1) == constants::HTTP_VERSION) {
         throw HttpParserException("No valid HTTP-Version substring found");
     }
-    pos_prev = ++(++pos_curr);  // advance to next line (currently sitting on CRLF sequence -> '\r\n')
+    pos_curr += 2; // advance to next line (currently sitting on CRLF sequence -> '\r\n')
+    pos_prev = pos_curr;
 
 
     // Misc Headers
@@ -117,7 +120,8 @@ void http::RequestHeader::deserialize(const std::string &content) {
             break;
         }
         key = content.substr(pos_prev, pos_curr - pos_prev);
-        pos_prev = ++(++pos_curr); // advance by two characters (currently sitting on a colon followed by whitespace)
+        pos_curr += 2; // advance by two characters (currently sitting on a colon followed by whitespace)
+        pos_prev = pos_curr;
 
         // value
         pos_curr = content.find_first_of(constants::LINE_ENDING, pos_prev);
@@ -125,7 +129,8 @@ void http::RequestHeader::deserialize(const std::string &content) {
             break;
         }
         value = content.substr(pos_prev, pos_curr - pos_prev);
-        pos_prev = ++(++pos_curr); // advance to next line (currently sitting on CRLF sequence -> '\r\n')
+        pos_curr += 2; // advance to next line (currently sitting on CRLF sequence -> '\r\n')
+        pos_prev = pos_curr;
 
         m_misc_headers.insert(std::make_pair(key, value));
     }
