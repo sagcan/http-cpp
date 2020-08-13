@@ -4,10 +4,27 @@ It's purpose - for me personally - was simply to better understand the Linux epo
 That being said, the code itself is fairly easy to understand and heavily commented. 
 
 ## Building
-http-cpp has a spdlog dependecy, so head over to https://github.com/gabime/spdlog and follow to the instructions as to how to install it.
-Other than that http-cpp can be build as with any CMake project by creating a `build/` directory, executing `cmake ..` inside it followed by a `make -j`:
+http-cpp depends on 2 libraries, namely 
+* spdlog
+* gtest
+
+On Ubuntu 20.04 we'd install both libraries like so:
+```
+# spdlog
+sudo apt install libspdlog-dev
+
+# gtest
+git clone https://github.com/google/googletest
+cd googletest
+
+mkdir build && cd build
+cmake .. -DBUILD_SHARE_LIBS=ON
+make -j
+sudo make install
+```
+Once done, http-cpp itself can be compiled like any other CMake project:
 ```Bash
-mkdir build; cd build
+mkdir build && cd build
 cmake ..
 make -j
 ``` 
